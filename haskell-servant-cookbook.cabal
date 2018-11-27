@@ -80,6 +80,7 @@ executable https-client
                      , aeson
                      , http-client
                      , http-client-tls
+                     , connection
                      , transformers
                      , servant
                      , servant-client
