@@ -1,0 +1,223 @@
+* Authentication and session in Haskell with Servant
+
+How to use authentication and session with servant.
+
+Repository http://github.com/algas/haskell-servant-cookbook
+
+** API
+
+
+We declare an API with a private part, protected by a mecanism named "cookie-auth", and a public part
+
+#+BEGIN_SRC haskell :tangle exSession.hs :shebang "#!/usr/bin/env stack\n-- stack --resolver lts-12.20 script" :noweb strip-export
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators     #-}
+{-# LANGUAGE TypeFamilies      #-}
+module Main where
+import           Data.Aeson
+import           Data.ByteString                  (ByteString)
+import           GHC.Generics
+import           Servant
+import           Servant.API
+<<imports>>
+
+
+newtype PrivateData = PrivateData { ssshhh :: Text } deriving (Eq, Show, Generic)
+instance ToJSON PrivateData
+
+newtype PublicData = PublicData { somedata :: Text } deriving (Eq, Show, Generic)
+instance ToJSON PublicData
+
+type PublicAPI = Get '[JSON] [PublicData]
+type PrivateAPI = Get '[JSON] PrivateData
+
+type AuthGenAPI = "private" :> AuthProtect "cookie-auth" :> PrivateAPI
+             :<|> "public"  :> PublicAPI
+
+genAuthAPI :: Proxy AuthGenAPI
+genAuthAPI = Proxy
+#+END_SRC
+
+
+
+** Security Layer
+
+#+NAME: imports
+#+BEGIN_SRC haskell
+import           Data.Map                         (Map)
+import qualified Data.Map                         as M
+import           Data.Maybe                       (fromJust, fromMaybe)
+import           Data.Monoid                      ((<>))
+import           Data.Text                        (Text)
+import           GHC.Generics
+import           Network.Wai
+import           Network.Wai.Handler.Warp
+import           Servant
+import           Servant.API
+import           Servant.API.Experimental.Auth    (AuthProtect)
+import           Servant.Server.Experimental.Auth (AuthHandler, AuthServerData,
+                                                   mkAuthHandler)
+import           Servant.Server.Experimental.Auth ()
+#+END_SRC
+
+The part under "cookie-auth" will provide, upon successful authentication, an extra "Account" to the context
+
+#+BEGIN_SRC haskell :tangle exSession.hs
+type instance AuthServerData (AuthProtect "cookie-auth") = Account
+
+newtype Account = Account { unAccount :: Text }
+#+END_SRC
+
+
+Our simple database, which uses no effect. One would need to provide 
+#+BEGIN_SRC haskell :tangle exSession.hs
+database :: Map ByteString Account
+database = M.fromList [ ("key1", Account "Anne Briggs")
+                      , ("key2", Account "Bruce Cockburn")
+                      , ("key3", Account "Ghédalia Tazartès")
+                      ]
+#+END_SRC
+
+Here we go from Http/Servant -> our db -> Http/Servant
+
+#+BEGIN_SRC haskell :tangle exSession.hs
+authHandler :: AuthHandler Request Account
+authHandler =
+    let handler req = case lookup "servant-auth-cookie" (requestHeaders req) of
+            Nothing -> throwError (err401 { errBody = "Missing auth header" })
+            Just authCookieKey -> lookupAccount authCookieKey
+        in mkAuthHandler handler
+
+lookupAccount :: ByteString -> Handler Account
+lookupAccount key = case M.lookup key database of
+    Nothing -> throwError (err403 { errBody = "Invalid Cookie" })
+    Just usr -> return usr
+#+END_SRC
+
+** Server
+
+#+NAME: imports
+#+BEGIN_SRC haskell
+#+END_SRC
+
+The private server has an "Account" context provided by successful authentication for implementing the private API.
+
+#+BEGIN_SRC haskell :tangle exSession.hs
+genAuthServer :: Server AuthGenAPI
+genAuthServer =
+    let privateDataFunc (Account name) = return (PrivateData ("this is a secret: " <> name))
+        publicData = return [PublicData "this is a public piece of data"]
+    in  privateDataFunc :<|> publicData
+#+END_SRC
+
+
+Servant will see that requests are protect by "cookie-auth" which provides an Account.
+It will look in a static list for a value of type AuthHandler Request Account providing the required authentication mechanism
+#+BEGIN_SRC haskell :tangle exSession.hs
+genAuthServerContext :: Context (AuthHandler Request Account ': '[])
+genAuthServerContext = authHandler :. EmptyContext
+#+END_SRC
+
+
+Serve this API, and when you are being asked for a protected path, ask the corresponding authentication
+The server has an extended context for private parts which will be provided by the genAuthServerContext
+
+#+BEGIN_SRC haskell :tangle exSession.hs
+genAuthMain :: IO ()
+genAuthMain = run 8080 (serveWithContext genAuthAPI genAuthServerContext genAuthServer)
+
+main :: IO ()
+main = do genAuthMain
+#+END_SRC
+
+** Running this file
+
+
+First we tangle the file, by running M-x org-babel-tangle
+Then run in the shell "./exSession.hs"
+
+Now we can test the server by evaluating various options :
+#+BEGIN_SRC sh
+curl http://localhost:8080/public
+#+END_SRC
+
+#+BEGIN_SRC sh
+curl http://localhost:8080/private
+#+END_SRC
+
+#+BEGIN_SRC sh
+curl -X GET 'http://localhost:8080/private' -H 'servant-auth-cookie: key1'
+#+END_SRC
+
+#+BEGIN_SRC sh
+curl -X GET 'http://localhost:8080/private' -H 'servant-auth-cookie: badkey'
+#+END_SRC
+
+     + other options for tangling
+       + directly in emacs with M-x org-babel-tangle
+       + running the block with C-c C-c
+          #+BEGIN_SRC elisp
+            (org-babel-tangle)
+          #+END_SRC
+
+          #+RESULTS:
+          | exSession.hs | make.sh |
+
+       + by running the script below (in command line or with C-c C-c)
+          #+BEGIN_SRC sh
+            emacs --batch -l org Https.org -f org-babel-tangle
+          #+END_SRC
+       + by tangling every file org with this script (the block itself can be tangled to a bash script which uses nix)
+          #+BEGIN_SRC elisp :tangle make.sh :shebang "#! /usr/bin/env nix-shell\n#! nix-shell -i \"emacs --script\"  -p \"pkgs.emacsWithPackages(epkgs: (with epkgs.melpaPackages; [ dash ]))\"\n#! nix-shell -I nixpkgs=channel:nixos-18.09"
+    (package-initialize)
+    (require 'dash)
+    (require 'ob-tangle)
+    (let ((orgfiles  (directory-files "." nil ".*org")))
+      (-map (lambda (n) (org-babel-tangle-file n)) orgfiles)    
+      )
+  #+END_SRC
+
+
+
+** Dependencies
+
+#+BEGIN_EXAMPLE
+    executable https-client
+      hs-source-dirs:      https-client
+      main-is:             Main.hs
+      ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+      build-depends:       base
+                         , text
+                         , aeson
+                         , http-client
+                         , http-client-tls
+                         , transformers
+                         , servant
+                         , servant-client
+                         , haskell-servant-cookbook
+      default-language:    Haskell2010
+
+    executable https-server
+      hs-source-dirs:      https-server
+      main-is:             Main.hs
+      ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+      build-depends:       base
+                         , text
+                         , aeson
+                         , wai
+                         , warp
+                         , warp-tls
+                         , servant
+                         , servant-server
+                         , haskell-servant-cookbook
+      default-language:    Haskell2010
+#+END_EXAMPLE
+
+** Reference
+
+https://hackage.haskell.org/package/scotty-tls\\
+http://d.hatena.ne.jp/ozuma/20130511/1368284304
+
+
