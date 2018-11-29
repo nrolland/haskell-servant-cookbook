@@ -103,34 +103,38 @@ import Control.Concurrent
 
 ** Running this file
 
-First we tangle the file, by running the script below (in command line or with C-c C-c)
-#+BEGIN_SRC sh
-emacs --batch -l org HelloWorld.org -f org-babel-tangle
-#+END_SRC
+*** First we tangle the file, by running M-x org-babel-tangle
+**** all options
 
-other options
- + directly in emacs with M-x org-babel-tangle
+  + directly in emacs with M-x org-babel-tangle
+  + running the block with C-c C-c
+     #+BEGIN_SRC elisp
+  (org-babel-tangle)
+  #+END_SRC
+  + by running the script below (in command line or with C-c C-c)
+      #+BEGIN_SRC sh
+  emacs --batch -l org HelloWorld.org -f org-babel-tangle
+  #+END_SRC
+  + by tangling every file org with this script (the block itself can be tangled to a bash script which uses nix)
+     #+BEGIN_SRC elisp :tangle make.sh :shebang "#! /usr/bin/env nix-shell\n#! nix-shell -i \"emacs --script\"  -p \"pkgs.emacsWithPackages(epkgs: (with epkgs.melpaPackages; [ dash ]))\"\n#! nix-shell -I nixpkgs=channel:nixos-18.09"
+    (package-initialize)
+    (require 'dash)
+    (require 'ob-tangle)
+    (let ((orgfiles  (directory-files "." nil ".*org")))
+      (-map (lambda (n) (org-babel-tangle-file n)) orgfiles)    
+      )
+  #+END_SRC
 
- + by tangling every file org with this script (the block itself can be tangled to a bash script which uses nix)
-#+BEGIN_SRC elisp :tangle make.sh :shebang "#! /usr/bin/env nix-shell\n#! nix-shell -i \"emacs --script\"  -p \"pkgs.emacsWithPackages(epkgs: (with epkgs.melpaPackages; [ dash ]))\"\n#! nix-shell -I nixpkgs=channel:nixos-18.09"
-  (package-initialize)
-  (require 'dash)
-  (require 'ob-tangle)
-  (let ((orgfiles  (directory-files "." nil ".*org")))
-    (-map (lambda (n) (org-babel-tangle-file n)) orgfiles)    
-    )
-#+END_SRC
 
+*** Then we can run the script
+    #+BEGIN_SRC sh
+    ./hello
+    #+END_SRC
 
-Then we can run the script
-#+BEGIN_SRC sh
-./hello
-#+END_SRC
+    #+RESULTS:
+    | Hello world | John Smith | age = 26}) |
 
-#+RESULTS:
-| Hello world | John Smith | age = 26}) |
-
-** Check with stack projects
+** Running the stack projects
 
 0. Build\\
    =$ stack build=
