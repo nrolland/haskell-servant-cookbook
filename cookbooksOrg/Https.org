@@ -3,11 +3,10 @@
 How to use https in your client and server with servant.
 
 Repository http://github.com/algas/haskell-servant-cookbook
-
 ** API
 
 
-#+BEGIN_SRC haskell :tangle exhttps :shebang "#!/usr/bin/env stack\n-- stack --resolver lts-12.20 script" :noweb strip-export
+#+BEGIN_SRC haskell :tangle exhttps.hs :shebang "#!/usr/bin/env stack\n-- stack --resolver lts-12.20 script" :noweb strip-export
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -45,7 +44,7 @@ Use =tlsManagerSettings= in http-client-tls instead of
   import qualified Data.Text.IO as T
 #+END_SRC
 
-#+BEGIN_SRC haskell :tangle exhttps
+#+BEGIN_SRC haskell :tangle exhttps.hs
   simple = client simpleApi
 
   queries :: Manager -> BaseUrl -> IO (Either ServantError Text)
@@ -82,7 +81,7 @@ Use =runTLS=, =tlsSettings= in warp-tls library.
     import           Servant
     import           Servant.API
 #+END_SRC
-#+BEGIN_SRC haskell :tangle exhttps
+#+BEGIN_SRC haskell :tangle exhttps.hs
     server :: Server SimpleAPI
     server = return "Simple"
 
@@ -97,7 +96,7 @@ Use =runTLS=, =tlsSettings= in warp-tls library.
 #+BEGIN_SRC haskell
 import Control.Concurrent
 #+END_SRC
-#+BEGIN_SRC haskell  :tangle exhttps
+#+BEGIN_SRC haskell  :tangle exhttps.hs
   main :: IO ()
   main = do 
       _ <- forkIO $ servehttps

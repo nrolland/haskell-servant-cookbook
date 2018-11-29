@@ -98,6 +98,9 @@ Test codes as following.
   #+RESULTS:
   | extestserver | make.sh |
 
+  #+RESULTS:
+  | extestserver | make.sh |
+
   + by running the script below (in command line or with C-c C-c)
       #+BEGIN_SRC sh
   emacs --batch -l org HelloWorld.org -f org-babel-tangle

@@ -56,7 +56,7 @@ First tangle this file, then run it
 #+RESULTS:
 | logger |
 
-#+BEGIN_SRC haskell :tangle exlogger :shebang "#!/usr/bin/env stack\n-- stack --resolver lts-12.20 script" :noweb strip-export
+#+BEGIN_SRC haskell :tangle exlogger.hs :shebang "#!/usr/bin/env stack\n-- stack --resolver lts-12.20 script" :noweb strip-export
     {-# LANGUAGE DataKinds         #-}
     {-# LANGUAGE OverloadedStrings #-}
     {-# LANGUAGE TypeOperators     #-}

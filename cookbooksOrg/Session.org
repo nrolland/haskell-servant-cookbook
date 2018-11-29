@@ -151,9 +151,11 @@ curl http://localhost:8080/private
 curl -X GET 'http://localhost:8080/private' -H 'servant-auth-cookie: key1'
 #+END_SRC
 
+
 #+BEGIN_SRC sh
 curl -X GET 'http://localhost:8080/private' -H 'servant-auth-cookie: badkey'
 #+END_SRC
+
 
      + other options for tangling
        + directly in emacs with M-x org-babel-tangle
