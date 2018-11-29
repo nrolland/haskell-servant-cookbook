@@ -1,0 +1,180 @@
+* Https in Haskell with Servant
+
+How to use https in your client and server with servant.
+
+Repository http://github.com/algas/haskell-servant-cookbook
+
+** API
+
+
+#+BEGIN_SRC haskell :tangle https :shebang "#!/usr/bin/env stack\n-- stack --resolver lts-12.20 script" :noweb strip-export
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators     #-}
+module SimpleApi where
+
+import           Control.Monad.Trans.Except (ExceptT, runExceptT)
+import           Data.Proxy
+import           Data.Text                  (Text)
+import           Servant
+import           Servant.API
+<<imports>>
+
+
+type SimpleAPI  = Get '[PlainText] Text
+
+simpleApi :: Proxy SimpleAPI
+simpleApi = Proxy
+
+
+#+END_SRC
+
+** Client
+
+Use =tlsManagerSettings= in http-client-tls instead of
+=defaultManagerSettings=.
+
+#+NAME: imports
+#+BEGIN_SRC haskell
+  import           Network.HTTP.Client.TLS    (tlsManagerSettings, mkManagerSettings)
+  import           Servant.Client
+  import qualified Network.Connection as NC (TLSSettings(..))
+
+  import           Network.HTTP.Client        (newManager, Manager)
+  import qualified Data.Text.IO as T
+#+END_SRC
+
+#+BEGIN_SRC haskell :tangle https
+  simple = client simpleApi
+
+  queries :: Manager -> BaseUrl -> IO (Either ServantError Text)
+  queries manager baseurl = do
+      h <- runClientM simple $ mkClientEnv manager baseurl
+      return h
+
+  tester :: IO ()
+  tester = do
+      stgs <- do
+        choice <- do { T.putStrLn "1. try with normal certificate check \n2. try with no check\n (you can try in your browser now)"; T.getLine}
+        case choice of
+          "1" ->  do{ T.putStrLn "checking"; return tlsManagerSettings}
+          "2" ->  do{ T.putStrLn "no check"; return (mkManagerSettings (NC.TLSSettingsSimple True False False) Nothing) }
+
+      manager <- newManager stgs
+      let baseUrl = BaseUrl Https "localhost" 8080 ""
+      res <- queries manager baseUrl
+      case res of
+          Left err -> putStrLn $ "Error: " ++ show err
+          Right p -> print p
+#+END_SRC
+
+** Server
+
+Use =runTLS=, =tlsSettings= in warp-tls library.
+
+#+NAME: imports
+#+BEGIN_SRC haskell
+    import           Data.Text                   (Text)
+    import           Network.Wai
+    import           Network.Wai.Handler.Warp
+    import           Network.Wai.Handler.WarpTLS
+    import           Servant
+    import           Servant.API
+#+END_SRC
+#+BEGIN_SRC haskell :tangle https
+    server :: Server SimpleAPI
+    server = return "Simple"
+
+    app :: Application
+    app = serve simpleApi server
+
+    servehttps :: IO ()
+    servehttps = runTLS (tlsSettings "server.crt" "server.key") (setPort 8080 defaultSettings) app
+#+END_SRC
+
+#+NAME: imports
+#+BEGIN_SRC haskell
+import Control.Concurrent
+#+END_SRC
+#+BEGIN_SRC haskell  :tangle https
+  main :: IO ()
+  main = do 
+      _ <- forkIO $ servehttps
+      tester
+#+END_SRC
+** Running this file
+
+This suppose you have the certificates, which can be generated with 
+#+BEGIN_SRC sh
+  openssl genrsa -des3 -out server.key 1024
+  openssl req -new -key server.key -out server.csr
+  cp server.key server.key.full
+  openssl rsa -in server.key.full -out server.key
+  openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
+#+END_SRC
+
+First we tangle the file, by running M-x org-babel-tangle
+     + other options
+       + directly in emacs with M-x org-babel-tangle
+       + running the block with C-c C-c
+          #+BEGIN_SRC elisp
+            (org-babel-tangle)
+          #+END_SRC
+       + by running the script below (in command line or with C-c C-c)
+          #+BEGIN_SRC sh
+            emacs --batch -l org Https.org -f org-babel-tangle
+          #+END_SRC
+       + by tangling every file org with this script (the block itself can be tangled to a bash script which uses nix)
+          #+BEGIN_SRC elisp :tangle make.sh :shebang "#! /usr/bin/env nix-shell\n#! nix-shell -i \"emacs --script\"  -p \"pkgs.emacsWithPackages(epkgs: (with epkgs.melpaPackages; [ dash ]))\"\n#! nix-shell -I nixpkgs=channel:nixos-18.09"
+    (package-initialize)
+    (require 'dash)
+    (require 'ob-tangle)
+    (let ((orgfiles  (directory-files "." nil ".*org")))
+      (-map (lambda (n) (org-babel-tangle-file n)) orgfiles)    
+      )
+  #+END_SRC
+
+Then we can run the script ./https
+
+
+** Dependencies
+
+#+BEGIN_EXAMPLE
+    executable https-client
+      hs-source-dirs:      https-client
+      main-is:             Main.hs
+      ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+      build-depends:       base
+                         , text
+                         , aeson
+                         , http-client
+                         , http-client-tls
+                         , transformers
+                         , servant
+                         , servant-client
+                         , haskell-servant-cookbook
+      default-language:    Haskell2010
+
+    executable https-server
+      hs-source-dirs:      https-server
+      main-is:             Main.hs
+      ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+      build-depends:       base
+                         , text
+                         , aeson
+                         , wai
+                         , warp
+                         , warp-tls
+                         , servant
+                         , servant-server
+                         , haskell-servant-cookbook
+      default-language:    Haskell2010
+#+END_EXAMPLE
+
+** Reference
+
+https://hackage.haskell.org/package/scotty-tls\\
+http://d.hatena.ne.jp/ozuma/20130511/1368284304
+
+
