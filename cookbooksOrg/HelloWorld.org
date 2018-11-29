@@ -83,8 +83,7 @@ type has properties =name= and =age=.
       res <- queries manager baseUrl
       case res of
           Left err -> putStrLn $ "Error: " ++ show err
-          Right p -> do
-              print p
+          Right p -> print p
 #+END_SRC
 
 #+NAME: imports
