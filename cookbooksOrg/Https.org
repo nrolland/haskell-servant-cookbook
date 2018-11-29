@@ -7,7 +7,7 @@ Repository http://github.com/algas/haskell-servant-cookbook
 ** API
 
 
-#+BEGIN_SRC haskell :tangle https :shebang "#!/usr/bin/env stack\n-- stack --resolver lts-12.20 script" :noweb strip-export
+#+BEGIN_SRC haskell :tangle exhttps :shebang "#!/usr/bin/env stack\n-- stack --resolver lts-12.20 script" :noweb strip-export
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -45,7 +45,7 @@ Use =tlsManagerSettings= in http-client-tls instead of
   import qualified Data.Text.IO as T
 #+END_SRC
 
-#+BEGIN_SRC haskell :tangle https
+#+BEGIN_SRC haskell :tangle exhttps
   simple = client simpleApi
 
   queries :: Manager -> BaseUrl -> IO (Either ServantError Text)
@@ -82,7 +82,7 @@ Use =runTLS=, =tlsSettings= in warp-tls library.
     import           Servant
     import           Servant.API
 #+END_SRC
-#+BEGIN_SRC haskell :tangle https
+#+BEGIN_SRC haskell :tangle exhttps
     server :: Server SimpleAPI
     server = return "Simple"
 
@@ -97,7 +97,7 @@ Use =runTLS=, =tlsSettings= in warp-tls library.
 #+BEGIN_SRC haskell
 import Control.Concurrent
 #+END_SRC
-#+BEGIN_SRC haskell  :tangle https
+#+BEGIN_SRC haskell  :tangle exhttps
   main :: IO ()
   main = do 
       _ <- forkIO $ servehttps
@@ -135,7 +135,7 @@ First we tangle the file, by running M-x org-babel-tangle
       )
   #+END_SRC
 
-Then we can run the script ./https
+Then we can run the script ./exhttps
 
 
 ** Dependencies

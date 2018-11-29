@@ -7,7 +7,7 @@ Repository http://github.com/algas/haskell-servant-cookbook
 "/" returns "Hello World" and "/users/(name)/(age)" returns User. User
 type has properties =name= and =age=.
 
-#+BEGIN_SRC haskell :tangle hello :shebang "#!/usr/bin/env stack\n-- stack --resolver lts-12.20 script" :noweb strip-export
+#+BEGIN_SRC haskell :tangle exhello :shebang "#!/usr/bin/env stack\n-- stack --resolver lts-12.20 script" :noweb strip-export
   {-# LANGUAGE DataKinds         #-}
   {-# LANGUAGE DeriveGeneric     #-}
   {-# LANGUAGE OverloadedStrings #-}
@@ -44,7 +44,7 @@ type has properties =name= and =age=.
     import           Network.Wai.Handler.Warp
     import           Servant
 #+END_SRC
-#+BEGIN_SRC haskell :tangle hello
+#+BEGIN_SRC haskell :tangle exhello
     server :: Server HelloAPI
     server = hello :<|> user
         where
@@ -67,7 +67,7 @@ type has properties =name= and =age=.
                                                  newManager)
     import           Servant.Client
 #+END_SRC
-#+BEGIN_SRC haskell :tangle hello
+#+BEGIN_SRC haskell :tangle exhello
   hello :<|> user = client helloApi
 
   queries :: Manager -> BaseUrl -> IO (Either ServantError (Text, User))
@@ -90,7 +90,7 @@ type has properties =name= and =age=.
 #+BEGIN_SRC haskell
 import Control.Concurrent
 #+END_SRC
-#+BEGIN_SRC haskell  :tangle hello
+#+BEGIN_SRC haskell  :tangle exhello
   main :: IO ()
   main = do 
       _ <- forkIO $ run 8080 app
@@ -127,7 +127,7 @@ import Control.Concurrent
 
 *** Then we can run the script
     #+BEGIN_SRC sh
-    ./hello
+    ./exhello
     #+END_SRC
 
     #+RESULTS:
